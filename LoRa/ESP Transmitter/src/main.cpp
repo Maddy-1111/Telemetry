@@ -2,6 +2,7 @@
 #include <SPI.h>
 #include <LoRa.h>
 #include <vector>
+#include <cstring>  // Required for memcpy
 
 // LoRa module pins for ESP32
 #define LORA_RST  27
@@ -19,16 +20,19 @@
 
 // Global vector to hold received data (assumed to be filled elsewhere)
 std::vector<float> receivedData;
+#define CHUNK_SIZE 60
 
 std::vector<std::vector<float>> chunkVector(const std::vector<float>& vec, int chunkSize);
 bool checkSerial(std::vector<float>& dataArray);
 int crc_generate(const std::vector<float>& data);
+void sendLoRaPacket(const std::vector<float>& chunk, int crc);
+void fillArray(std::vector<float>& arr, size_t size);
 
 
 void setup() {
   Serial.begin(115200);
   while (!Serial);
-  // Serial.println("Initializing LoRa Transmitter...");
+  Serial.println("Initializing LoRa Transmitter...");
 
   SPI.begin(HSPI_CLK, HSPI_MISO, HSPI_MOSI, HSPI_CS);
   LoRa.setPins(LORA_SS, LORA_RST, LORA_DIO0);
@@ -37,46 +41,51 @@ void setup() {
     // Serial.println("LoRa initialization failed!");
     while (1);
   }
-  LoRa.setSpreadingFactor(7);
-  LoRa.setSignalBandwidth(125E3);
-  LoRa.setCodingRate4(6);
-  // Serial.println("LoRa Transmitter Ready");
+
+    // LoRa.setSpreadingFactor(7);
+    // LoRa.setSignalBandwidth(125E3);
+    // LoRa.setCodingRate4(6);
+
+  Serial.println("LoRa Transmitter Ready");
+
+  fillArray(receivedData, 600);
 }
 
 void loop() {
 
-  if (checkSerial(receivedData)) {
-    // Process the data here
-    Serial.printf("First 3: %.2f, %.2f, %.2f ... Last 2: %.2f, %.2f\n", 
-                  receivedData[0], receivedData[1], receivedData[2], 
-                  receivedData[receivedData.size() - 2], receivedData[receivedData.size() - 1]);
+  if (Serial.available() > 0) {
+    String command = Serial.readStringUntil('\n');
 
-    std::vector<float> dataCopy = receivedData;
-    int chunkSize = 50;
-    auto chunks = chunkVector(dataCopy, chunkSize);
-
-    // For each chunk, calculate its CRC and send via LoRa
-    for (auto &chunk : chunks) {
-      int crc = crc_generate(chunk);
-      String packetData = "";
-      
-      // Convert chunk data to a CSV string
-      for (size_t i = 0; i < chunk.size(); i++) {
-        packetData += String(chunk[i], 2); // 2 decimal places
-        if (i < chunk.size() - 1) {
-          packetData += ",";
-        }
+    if(command.equals("send")){
+      if (receivedData.empty()) {
+        Serial.println("Error: No data available to send.");
+        return; // Avoid further execution
       }
-      // Append the CRC value in hexadecimal
-      packetData += ",CRC:";
-      packetData += String(crc, HEX);
 
-      // Send the packet via LoRa
-      LoRa.beginPacket();
-      LoRa.print(packetData);
-      LoRa.endPacket();
-      delay(100);  // Small delay between packets
+      Serial.printf("First 3: %.10f, %.10f, %.10f ... Last 2: %.2f, %.2f\n", 
+                    receivedData[0], receivedData[1], receivedData[2], 
+                    receivedData[receivedData.size() - 2], receivedData[receivedData.size() - 1]);
+
+      std::vector<float> dataCopy = receivedData;
+      auto chunks = chunkVector(dataCopy, CHUNK_SIZE);
+
+      // For each chunk, calculate its CRC and send via LoRa
+      for (auto &chunk : chunks) {
+        int crc = crc_generate(chunk);
+        sendLoRaPacket(chunk, crc);
+        if(chunk.size() > 2){
+          Serial.printf("First 3: %.10f, %.10f, %.10f ... Last 2: %.2f, %.2f\n", 
+                    chunk[0], chunk[1], chunk[2], 
+                    chunk[chunk.size() - 2], chunk[chunk.size() - 1]);
+        }
+        else{
+          Serial.printf("Size of chunk < 3");
+        }
+        delay(100);
+        
+      }
     }
+
   }  
 
   delay(100);  // Delay before next loop iteration
@@ -133,4 +142,28 @@ bool checkSerial(std::vector<float>& dataArray) {
 
     }
     return false;  // No new data received
+}
+
+
+void fillArray(std::vector<float>& arr, size_t size) {
+    arr.resize(size); // Resize to the required size
+    for (size_t i = 0; i < arr.size(); ++i) {
+        arr[i] = static_cast<float>(i + 1) + 1e-4f;
+    }
+}
+
+
+// Sends the data as bytes, provided the vector chunk (float) and crc (int)
+void sendLoRaPacket(const std::vector<float>& chunk, int crc) {
+    if (chunk.empty()) return; // Avoid sending empty packets
+
+    std::vector<uint8_t> packetData(chunk.size() * sizeof(float) + sizeof(int));
+
+    std::memcpy(packetData.data(), chunk.data(), chunk.size() * sizeof(float));
+    std::memcpy(packetData.data() + (chunk.size() * sizeof(float)), &crc, sizeof(int));
+
+    LoRa.beginPacket();
+    LoRa.write(packetData.data(), packetData.size());
+    Serial.printf("Packet size: %d \n", packetData.size());
+    LoRa.endPacket();
 }

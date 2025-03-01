@@ -1,6 +1,9 @@
 #include <Arduino.h>
 #include <SPI.h>
 #include <LoRa.h>
+#include <vector>
+#include <cstring>  // Required for memcpy
+
 
 // Define LoRa module pins for ESP32
 #define LORA_RST  27
@@ -16,6 +19,11 @@
 #define LORA_FREQ 433E6
 #define BAUD_RATE 115200
 
+// #define CHUNK_SIZE 60
+
+
+int crc_verify(const std::vector<float>& data, int expected_crc);
+
 
 void setup() {
     Serial.begin(115200);
@@ -30,9 +38,9 @@ void setup() {
         while (1);
     }
 
-    LoRa.setSpreadingFactor(7);  // SF (default)
-    LoRa.setSignalBandwidth(125E3);  // BW (default)
-    LoRa.setCodingRate4(6);  // CR (default)
+    // LoRa.setSpreadingFactor(7);
+    // LoRa.setSignalBandwidth(125E3);
+    // LoRa.setCodingRate4(6);
 
     Serial.println("LoRa Receiver Ready");
 }
@@ -40,55 +48,82 @@ void setup() {
 void loop() {
 
     int packetSize = LoRa.parsePacket();
-    if (packetSize) {
-        String receivedData = "";
-        while (LoRa.available()) {
-            receivedData += (char)LoRa.read();
+    if (packetSize > 0) {
+        std::vector<uint8_t> receivedBytes(packetSize);
+        
+        // Read bytes into vector
+        for (int i = 0; i < packetSize; i++) {
+            receivedBytes[i] = LoRa.read();
         }
 
-        // Split the received string at ',' and extract first & last float
-        int firstComma = receivedData.indexOf(',');
-        int lastComma = receivedData.lastIndexOf(',');
+        // Ensure we have at least 4 bytes for the checksum
+        if (receivedBytes.size() < sizeof(int)) {
+            Serial.println("Error: Packet too small!");
+            return;
+        }
 
-        if (firstComma != -1 && lastComma != -1 && firstComma != lastComma) {
-            String firstValue = receivedData.substring(0, firstComma);
-            String lastValue = receivedData.substring(lastComma + 1);
+        // Extract the last 4 bytes as the CRC/checksum
+        int receivedCRC;
+        std::memcpy(&receivedCRC, &receivedBytes[receivedBytes.size() - sizeof(int)], sizeof(int));
 
-            Serial.printf("First: %s, Last: %s\n", firstValue.c_str(), lastValue.c_str());
+        // Extract the rest of the bytes as floats
+        size_t numFloats = (receivedBytes.size() - sizeof(int)) / sizeof(float);
+        std::vector<float> receivedData(numFloats);
+
+        for (size_t i = 0; i < numFloats; i++) {
+            std::memcpy(&receivedData[i], &receivedBytes[i * sizeof(float)], sizeof(float));
+        }
+
+        // Print first 3 and last 2 elements
+        Serial.printf("Received %d floats. CRC: %d\n", (int)receivedData.size(), receivedCRC);
+        if(crc_verify(receivedData, receivedCRC)) {
+            Serial.printf("VALID\n");
+        } else {
+            Serial.printf("INVALID\n");
+        }
+
+        if (receivedData.size() >= 3) {
+             Serial.printf("First 3: %.10f, %.10f, %.10f ... Last 2: %.2f, %.2f\n", 
+                    receivedData[0], receivedData[1], receivedData[2], 
+                    receivedData[receivedData.size() - 2], receivedData[receivedData.size() - 1]);
+        }
+        else{
+            Serial.printf("Size too small, got: %d", receivedData.size());
         }
     }
 
 
+
     if (Serial.available() > 0) {
-        // Read the incoming data as a string
         String input = Serial.readString();
         
-        // Trim any extra spaces or newlines
         input.trim();
-        
-        // Check if the received string is "reset"
+
         if (input == "reset") {
             Serial.println("Initiating Software Reset...");
             delay(1000);  // Optional delay to see the message before reset
-            ESP.restart();  // Triggers the software reset
+            ESP.restart();
         }
     }
 }
 
 
 
-int crc_verify(char *data, int len, int expected_crc) {
-    int crc = 0xFFFF;
-    for (int i = 0; i < len; i++) {
-        crc ^= (unsigned char)data[i];
-        for (int j = 0; j < 8; j++) {
-            if (crc & 0x01) {
-                crc = (crc >> 1) ^ 0xA001;
-            } else {
-                crc = crc >> 1;
-            }
+int crc_verify(const std::vector<float>& data, int expected_crc) {
+  int crc = 0xFFFF;
+  for (size_t i = 0; i < data.size(); i++) {
+    uint8_t byteArray[sizeof(float)];
+    memcpy(byteArray, &data[i], sizeof(float));
+    for (int j = 0; j < sizeof(float); j++) {
+      crc ^= byteArray[j];
+      for (int k = 0; k < 8; k++) {
+        if (crc & 0x01) {
+          crc = (crc >> 1) ^ 0xA001;
+        } else {
+          crc = crc >> 1;
         }
+      }
     }
-    // Return 0 if CRC matches, non-zero if it doesn't match
-    return (crc == expected_crc) ? 0 : 1;
+  }
+  return (crc == expected_crc) ? 1 : 0;
 }
