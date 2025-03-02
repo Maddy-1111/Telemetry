@@ -25,7 +25,7 @@ std::vector<float> receivedData;
 std::vector<std::vector<float>> chunkVector(const std::vector<float>& vec, int chunkSize);
 bool checkSerial(std::vector<float>& dataArray);
 int crc_generate(const std::vector<float>& data);
-void sendLoRaPacket(const std::vector<float>& chunk, int crc);
+void sendLoRaPacket(const std::vector<float>& chunk,  uint8_t chunkIndex, int crc);
 void fillArray(std::vector<float>& arr, size_t size);
 
 
@@ -52,7 +52,13 @@ void setup() {
 }
 
 void loop() {
+///////////// ack + retransmission ////////////////
 
+
+
+
+
+///////////////////////////////////////////////////
   if (Serial.available() > 0) {
     String command = Serial.readStringUntil('\n');
 
@@ -70,9 +76,10 @@ void loop() {
       auto chunks = chunkVector(dataCopy, CHUNK_SIZE);
 
       // For each chunk, calculate its CRC and send via LoRa
-      for (auto &chunk : chunks) {
+      for (uint8_t i = 0; i < chunks.size(); ++i) {
+        auto& chunk = chunks[i];
         int crc = crc_generate(chunk);
-        sendLoRaPacket(chunk, crc);
+        sendLoRaPacket(chunk, i, crc);
         if(chunk.size() > 2){
           Serial.printf("First 3: %.10f, %.10f, %.10f ... Last 2: %.2f, %.2f\n", 
                     chunk[0], chunk[1], chunk[2], 
@@ -88,7 +95,7 @@ void loop() {
 
   }  
 
-  delay(100);  // Delay before next loop iteration
+  delay(100);
 }
 
 
@@ -166,4 +173,19 @@ void sendLoRaPacket(const std::vector<float>& chunk, int crc) {
     LoRa.write(packetData.data(), packetData.size());
     Serial.printf("Packet size: %d \n", packetData.size());
     LoRa.endPacket();
+}
+
+void sendLoRaPacket(const std::vector<float>& chunk,  uint8_t chunkIndex, int crc) {
+  if (chunk.empty()) return; // Avoid sending empty packets
+
+  std::vector<uint8_t> packetData(chunk.size() * sizeof(float) + sizeof(uint8_t) + sizeof(int));
+
+  std::memcpy(packetData.data(), chunk.data(), chunk.size() * sizeof(float));
+  std::memcpy(packetData.data() + (chunk.size() * sizeof(float)), &chunkIndex, sizeof(uint8_t));
+  std::memcpy(packetData.data() + (chunk.size() * sizeof(float)) + sizeof(uint8_t), &crc, sizeof(int));
+
+  LoRa.beginPacket();
+  LoRa.write(packetData.data(), packetData.size());
+  Serial.printf("Packet size: %d \n", packetData.size());
+  LoRa.endPacket();
 }
