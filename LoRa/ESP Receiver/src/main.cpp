@@ -19,10 +19,10 @@
 #define LORA_FREQ 433E6
 #define BAUD_RATE 115200
 
-// #define CHUNK_SIZE 60
+#define CHUNK_SIZE 60
 
 
-int crc_verify(const std::vector<float>& data, int expected_crc);
+int generateCRC(const std::vector<float>& data, int expected_crc);
 
 
 void setup() {
@@ -38,9 +38,9 @@ void setup() {
         while (1);
     }
 
-    // LoRa.setSpreadingFactor(7);
-    // LoRa.setSignalBandwidth(125E3);
-    // LoRa.setCodingRate4(6);
+    LoRa.setSpreadingFactor(7);
+    LoRa.setSignalBandwidth(125E3);
+    LoRa.setCodingRate4(6);
 
     Serial.println("LoRa Receiver Ready");
 }
@@ -76,7 +76,7 @@ void loop() {
 
         // Print first 3 and last 2 elements
         Serial.printf("Received %d floats. CRC: %d\n", (int)receivedData.size(), receivedCRC);
-        if(crc_verify(receivedData, receivedCRC)) {
+        if(generateCRC(receivedData) == receivedCRC) {
             Serial.printf("VALID\n");
         } else {
             Serial.printf("INVALID\n");
@@ -109,21 +109,21 @@ void loop() {
 
 
 
-int crc_verify(const std::vector<float>& data, int expected_crc) {
-  int crc = 0xFFFF;
-  for (size_t i = 0; i < data.size(); i++) {
-    uint8_t byteArray[sizeof(float)];
-    memcpy(byteArray, &data[i], sizeof(float));
-    for (int j = 0; j < sizeof(float); j++) {
-      crc ^= byteArray[j];
-      for (int k = 0; k < 8; k++) {
-        if (crc & 0x01) {
-          crc = (crc >> 1) ^ 0xA001;
-        } else {
-          crc = crc >> 1;
-        }
-      }
-    }
-  }
-  return (crc == expected_crc) ? 1 : 0;
+int generateCRC(const std::vector<float>& data) {
+	int crc = 0xFFFF;
+	for (size_t i = 0; i < data.size(); i++) {
+		uint8_t byteArray[sizeof(float)];
+		memcpy(byteArray, &data[i], sizeof(float));
+		for (int j = 0; j < sizeof(float); j++) {
+		crc ^= byteArray[j];
+		for (int k = 0; k < 8; k++) {
+			if (crc & 0x01) {
+			crc = (crc >> 1) ^ 0xA001;
+			} else {
+			crc = crc >> 1;
+			}
+		}
+		}
+	}
+	return crc;
 }
