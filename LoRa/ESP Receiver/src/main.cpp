@@ -23,6 +23,7 @@
 
 
 int crc_verify(const std::vector<float>& data, int expected_crc);
+void sendLoRaAck(const std::vector<float>& data, int crc);
 
 
 void setup() {
@@ -126,4 +127,13 @@ int crc_verify(const std::vector<float>& data, int expected_crc) {
     }
   }
   return (crc == expected_crc) ? 1 : 0;
+}
+
+
+void sendLoRaAck(const std::vector<float>& data, int crc) {
+    LoRa.setSpreadingFactor(12);
+    LoRa.setSignalBandwidth(125E3);
+    LoRa.setCodingRate4(8);
+
+    
 }

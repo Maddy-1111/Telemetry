@@ -17,6 +17,9 @@
 #define BAUD_RATE 115200
 
 
+void getCommRate();
+
+
 void setup() {
     Serial.begin(115200);
     while (!Serial);
@@ -30,25 +33,65 @@ Serial.println("LoRa initialization failed!");
         while (1);
     }
 
-    LoRa.setSpreadingFactor(7);  // SF (default)
-    LoRa.setSignalBandwidth(125E3);  // BW (default)
-    LoRa.setCodingRate4(6);  // CR (default)
+    LoRa.setSpreadingFactor(7);
+    LoRa.setSignalBandwidth(125E3);
+    LoRa.setCodingRate4(6);
+    // LoRa.setSpreadingFactor(10);
+    // LoRa.setSignalBandwidth(62.5E3);
+    // LoRa.setCodingRate4(8);
 
 Serial.println("LoRa Transmitter Ready");
 }
 
+int count = 0;
 void loop() {
+    
+    getCommRate();
+    
+    Serial.println("Sending: " + String(count));
 
-    for (int i = 0; i < 100; i++) {
-Serial.println("Sending: " + String(i));
+    LoRa.beginPacket();
+    LoRa.print("Value: ");
+    LoRa.print(count);
+    LoRa.print(", Temp: ");
+    LoRa.print(25.6);
+    LoRa.print("--------------------------------------------------");
+    LoRa.print("--------------------------------------------------");
+    LoRa.print("--------------------------------------------------");
+    LoRa.print("--------------------------------------------------");
+    LoRa.endPacket();  // Sends the entire packet
 
-        LoRa.beginPacket();
-        LoRa.print("Value: ");
-        LoRa.print(i);
-        LoRa.print(", Temp: ");
-        LoRa.print(25.6);
-        LoRa.endPacket();  // Sends the entire packet
-
-        delay(100);  // Small delay for stability
+    count += 1;
+    if(count == 100){
+        count = 0;
     }
+
+    delay(100);  // Small delay for stability
+}
+
+
+void getCommRate() {
+    unsigned long startTime = millis();
+
+    // LoRa.setSpreadingFactor(10);
+    // LoRa.setSignalBandwidth(62.5E3);
+    // LoRa.setCodingRate4(8);
+
+    for(int i=0; i<500; i++) {
+        int packetSize = LoRa.parsePacket();
+        if (packetSize) {
+            Serial.print("Received: ");
+            while (LoRa.available()) {
+                Serial.print((char)LoRa.read());
+            }
+            Serial.println();
+        }
+    }
+
+    // LoRa.setSpreadingFactor(7);
+    // LoRa.setSignalBandwidth(125E3);
+    // LoRa.setCodingRate4(6);
+
+    unsigned long endTime = millis();
+    Serial.println("Execution Time: " + String(endTime - startTime) + " ms");
 }
