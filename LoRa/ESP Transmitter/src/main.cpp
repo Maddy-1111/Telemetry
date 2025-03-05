@@ -64,11 +64,10 @@ void loop() {
 	std::vector<float> dataCopy = receivedData;
 	auto chunks = chunkVector(dataCopy, CHUNK_SIZE);
 
-	// For each chunk, calculate its CRC and send via LoRa
 	for (uint8_t i = 0; i < chunks.size(); i++) {
 		auto chunk = chunks[i];
 		int crc = generateCRC(chunk);
-		sendLoRaPacket(chunk, crc, i);  // Pass chunk index
+		sendLoRaPacket(chunk, crc, i);
 // TODO: will probably fail without the prints in the sendLoRaPacket
 // can fix it by just waiting till it receives ack to send next packet or smthng
 		if(i == 0) {
