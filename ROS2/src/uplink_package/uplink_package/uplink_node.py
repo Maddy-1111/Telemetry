@@ -22,7 +22,7 @@ class SERIAL_NODE(Node):
         )
         self.final_data_subscriber
         self.final_sub_data = None
-        self.ser = serial.Serial(serial_port, baud_rate, timeout=2)
+        self.ser = serial.Serial(serial_port, baud_rate, timeout=0.75)  # worked till 0.6 (depends on LoRa rate)
 
 
     def send_final_data(self, msg): 
@@ -37,19 +37,21 @@ class SERIAL_NODE(Node):
             
             self.ser.write(length_byte + byte_data)  # Send bytes over serial
 
-            print(f"Sent chunk {i // CHUNK_SIZE + 1}: {len(byte_data)} bytes")
+            print(f"Sent chunk {i // CHUNK_SIZE}: {len(byte_data)} bytes")
 
             response = self.ser.readline()
             if response == b'':
                 print("no ack :(")
+                break
             elif response == b'ack\r\n':  # Compare bytes properly
                 print("------")
                 continue
             else:
-                print("How tf did you get here?")
+                print("xxxxxx")
                 print(response)
+                break
 
-
+    ########## TODO: remove this after removing all other printf statements (adding a delay of 1s)
         response = self.ser.readline()
 
         while(response != b''):
@@ -58,8 +60,11 @@ class SERIAL_NODE(Node):
             # response = 0
             response = self.ser.readline()
             # print(response)
+            
+    ###########
 
     
+    #### TODO: this is returning a 16 bit? ckeck it ### 
     def generate_crc(self, data_floats):
         """Generate CRC-16 (Modbus) for a list of float32 values."""
         crc = 0xFFFF

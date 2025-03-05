@@ -1,6 +1,6 @@
 from setuptools import find_packages, setup
 
-package_name = 'telemetry_package'
+package_name = 'uplink_package'
 
 setup(
     name=package_name,
@@ -20,7 +20,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'LoRa_node = telemetry_package.LoRa_node:main'
+            'uplink_node = uplink_package.uplink_node:main'
         ],
     },
 )
