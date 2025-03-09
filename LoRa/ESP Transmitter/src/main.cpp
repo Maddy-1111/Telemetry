@@ -32,7 +32,7 @@ void fillArray(std::vector<float>& arr, size_t size);
 
 
 void setup() {
-	Serial.begin(115200);
+	Serial.begin(BAUD_RATE);
 	while (!Serial);
 	Serial.println("Initializing LoRa Transmitter...");
 
@@ -59,33 +59,34 @@ void loop() {
 		Serial.printf("First 3: %.10f, %.10f, %.10f ... Last 2: %.2f, %.2f\n", 
 			receivedData[0], receivedData[1], receivedData[2], 
 			receivedData[receivedData.size() - 2], receivedData[receivedData.size() - 1]);
-	}
+	
 
-	std::vector<float> dataCopy = receivedData;
-	auto chunks = chunkVector(dataCopy, CHUNK_SIZE);
+		std::vector<float> dataCopy = receivedData;
+		auto chunks = chunkVector(dataCopy, CHUNK_SIZE);
 
-	for (uint8_t i = 0; i < chunks.size(); i++) {
-		auto chunk = chunks[i];
-		int crc = generateCRC(chunk);
-		sendLoRaPacket(chunk, crc, i);
+		for (uint8_t i = 0; i < chunks.size(); i++) {
+			auto chunk = chunks[i];
+			int crc = generateCRC(chunk);
+			sendLoRaPacket(chunk, crc, i);
 // TODO: will probably fail without the prints in the sendLoRaPacket
 // can fix it by just waiting till it receives ack to send next packet or smthng
-		if(i == 0) {
-			if(chunk.size() > 2) {
-				Serial.printf("First 3: %.10f, %.10f, %.10f\n", 
-							chunk[0], chunk[1], chunk[2]);
+			if(i == 0) {
+				if(chunk.size() > 2) {
+					Serial.printf("First 3: %.10f, %.10f, %.10f\n", 
+								chunk[0], chunk[1], chunk[2]);
+				}
+				else { Serial.printf("Size of 1st chunk < 3\n"); }
 			}
-			else { Serial.printf("Size of 1st chunk < 3\n"); }
-		}
-		if(i == chunks.size()-1) {
-			if(chunk.size() > 2) {
-				Serial.printf("... Last 2: %.2f, %.2f\n", 
-							chunk[chunk.size() - 2], chunk[chunk.size() - 1]);
+			if(i == chunks.size()-1) {
+				if(chunk.size() > 2) {
+					Serial.printf("... Last 2: %.2f, %.2f\n", 
+								chunk[chunk.size() - 2], chunk[chunk.size() - 1]);
+				}
+				else { Serial.printf("Size of last chunk < 3\n"); }
 			}
-			else { Serial.printf("Size of last chunk < 3\n"); }
+			
+			delay(50);		
 		}
-		
-		delay(50);		
 	}
 //////// NOTE: delay at end of loop must be more than timeout on uplink ///////
 	delay(750);			// worked till 600ms (depends on LoRa settings)
@@ -127,7 +128,7 @@ int generateCRC(const std::vector<float>& data) {
 
 
 bool readSerial(std::vector<float>& dataArray) {
-	std::vector<float> dataBuffer;  // Temporary buffer to store received packets
+	std::vector<float> dataBuffer;
 	bool new_data = false;
 	while (Serial.available()) {
 		uint8_t length;				// number of floats being received

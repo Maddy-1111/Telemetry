@@ -9,7 +9,11 @@ YELLOW = "\033[33m"
 GREEN = "\033[32m"
 RESET = "\033[0m"
 
+PORT = "/dev/ttyUSB1"
+TIMEOUT = 0.75
+BAUD_RATE = 115200
 CHUNK_SIZE = 60
+
 
 class SERIAL_NODE(Node):
 
@@ -22,7 +26,7 @@ class SERIAL_NODE(Node):
         )
         self.final_data_subscriber
         self.final_sub_data = None
-        self.ser = serial.Serial(serial_port, baud_rate, timeout=0.75)  # worked till 0.6 (depends on LoRa rate)
+        self.ser = serial.Serial(serial_port, baud_rate, timeout=TIMEOUT)  # worked till 0.6 (depends on LoRa rate)
 
 
     def send_final_data(self, msg): 
@@ -87,7 +91,7 @@ def main(args=None):
     rclpy.init(args=args)
 
     serial_node = SERIAL_NODE("serial_node")
-    serial_node.init_final_data_subscriber("final_data","/dev/ttyUSB0",115200)
+    serial_node.init_final_data_subscriber("final_data",PORT,BAUD_RATE)
 
     while rclpy.ok():
         rclpy.spin_once(serial_node) 
