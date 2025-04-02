@@ -4,10 +4,13 @@ from std_msgs.msg import Float32MultiArray
 import serial
 import struct
 
+RED = "\033[31m"
+RESET = "\033[0m" 
+
 PORT = "/dev/ttyUSB0"  # Change as needed
 BAUD_RATE = 115200
 TIMEOUT = 1  # Adjust timeout as required
-DATA_SIZE = 600
+DATA_SIZE = 600 # Not critical currently (since were taking the whole array at once)
 CHUNK_SIZE = 60
 
 
@@ -23,8 +26,8 @@ class SerialReceiverNode(Node):
         while rclpy.ok():   
             try:
                 size_bytes = self.ser.read(4)
-                if len(size_bytes) != 4:
-                    print("Failed to read data size, flushing serial")
+                if len(size_bytes) != 4:        # acts as the check for when no data present
+                    print(f"{RED}Failed to read data size, flushing serial{RESET}")
                     self.ser.reset_input_buffer()  # Flush any remaining junk data
                     continue
 

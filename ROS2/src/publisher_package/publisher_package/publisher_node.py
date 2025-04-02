@@ -3,6 +3,8 @@ from rclpy.node import Node
 from std_msgs.msg import Float32MultiArray as rosarray
 import random
 
+DATA_SIZE = 87 # Critical
+
 class ExamplePublisher(Node):
     def __init__(self, array_length=600):
         super().__init__('example_publisher')
@@ -34,7 +36,7 @@ class ExamplePublisher(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-    example_publisher = ExamplePublisher(array_length=600)
+    example_publisher = ExamplePublisher(array_length=DATA_SIZE)
     
     try:
         rclpy.spin(example_publisher)

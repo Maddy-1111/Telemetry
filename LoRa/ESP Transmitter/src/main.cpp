@@ -20,7 +20,7 @@
 
 #define CHUNK_SIZE 60
 #define HEADER_SIZE 4 			// TODO: for the crc (not in use rn)
-#define DATA_SIZE 600
+#define DATA_SIZE 600 // Not critical
 
 std::vector<float> receivedData;
 
@@ -56,7 +56,7 @@ void setup() {
 void loop() {
 
 	if(readSerial(receivedData)) {
-		Serial.printf("First 3: %.10f, %.10f, %.10f ... Last 2: %.2f, %.2f\n", 
+		Serial.printf("(received) First 3: %.10f, %.10f, %.10f ... Last 2: %.2f, %.2f\n", 
 			receivedData[0], receivedData[1], receivedData[2], 
 			receivedData[receivedData.size() - 2], receivedData[receivedData.size() - 1]);
 	
@@ -72,14 +72,14 @@ void loop() {
 // can fix it by just waiting till it receives ack to send next packet or smthng
 			if(i == 0) {
 				if(chunk.size() > 2) {
-					Serial.printf("First 3: %.10f, %.10f, %.10f\n", 
+					Serial.printf("(sent) First 3: %.10f, %.10f, %.10f\n", 
 								chunk[0], chunk[1], chunk[2]);
 				}
 				else { Serial.printf("Size of 1st chunk < 3\n"); }
 			}
 			if(i == chunks.size()-1) {
 				if(chunk.size() > 2) {
-					Serial.printf("... Last 2: %.2f, %.2f\n", 
+					Serial.printf("(sent) ... Last 2: %.2f, %.2f\n", 
 								chunk[chunk.size() - 2], chunk[chunk.size() - 1]);
 				}
 				else { Serial.printf("Size of last chunk < 3\n"); }

@@ -22,7 +22,7 @@
 #define BAUD_RATE 115200
 
 #define CHUNK_SIZE 60
-#define DATA_SIZE 600
+#define DATA_SIZE 87 // Critical
 
 std::vector<float> receivedData;
 
@@ -59,7 +59,7 @@ void loop() {
 	std::vector<float> dataBuffer;
 	uint8_t expectedIndex = 0;
 
-	while (expectedIndex < std::floor(DATA_SIZE/CHUNK_SIZE)) {
+	while (expectedIndex <= std::ceil(DATA_SIZE/CHUNK_SIZE)) {
         int packetSize = LoRa.parsePacket();
         if (packetSize > 0) {
             // auto [index, packetData] = decodeLoRaPacket(packetSize);
@@ -78,7 +78,7 @@ void loop() {
             expectedIndex++;
         }
     }
-
+// TODO: remove this rssi check part #################
 	receivedData = dataBuffer;
     receivedData[1] = (float)LoRa.packetRssi();
     receivedData[2] = LoRa.packetSnr();
@@ -86,8 +86,9 @@ void loop() {
 // Serial.printf("First 3: %.10f, %.10f, %.10f ... Last 2: %.2f, %.2f\n", 
 // 	receivedData[0], receivedData[1], receivedData[2], 
 // 	receivedData[receivedData.size() - 2], receivedData[receivedData.size() - 1]);
+// Serial.printf("Size = %d\n", receivedData.size());
 
-    writeSerial(receivedData);
+    writeSerial(receivedData);      // This wont work with print statements and vice-versa #############
 
 
     if (Serial.available() > 0) {
@@ -132,7 +133,7 @@ void fillArray(std::vector<float>& arr, size_t size) {
     }
 }
 
-
+// TODO: add the crc check in loop or below
 std::tuple<uint8_t, std::vector<float>> decodeLoRaPacket(int packetSize) {
 
 	if (packetSize <= sizeof(uint8_t) + sizeof(int)) {
