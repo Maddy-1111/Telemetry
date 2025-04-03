@@ -7,7 +7,7 @@ DATA_SIZE = 87 # Critical
 
 class ExamplePublisher(Node):
     def __init__(self, array_length=600):
-        super().__init__('example_publisher')
+        super().__init__('publisher_node')
         self.publisher = self.create_publisher(rosarray, 'final_data', 10)
         self.array_length = array_length
         self.counter = 0

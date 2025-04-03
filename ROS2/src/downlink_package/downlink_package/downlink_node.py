@@ -16,7 +16,7 @@ CHUNK_SIZE = 60
 
 class SerialReceiverNode(Node):
     def __init__(self):
-        super().__init__("serial_receiver")
+        super().__init__("downlink_node")
         self.publisher_ = self.create_publisher(Float32MultiArray, "serial_data", 10)
         self.ser = serial.Serial(PORT, BAUD_RATE, timeout=TIMEOUT)
         self.get_logger().info("Serial receiver node initialized")

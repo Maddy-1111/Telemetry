@@ -90,7 +90,7 @@ class SERIAL_NODE(Node):
 def main(args=None):
     rclpy.init(args=args)
 
-    serial_node = SERIAL_NODE("serial_node")
+    serial_node = SERIAL_NODE("uplink_node")
     serial_node.init_final_data_subscriber("final_data",PORT,BAUD_RATE)
 
     while rclpy.ok():
