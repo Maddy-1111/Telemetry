@@ -14,7 +14,7 @@
 #define HSPI_MOSI 13
 
 #define LORA_FREQ 433E6
-#define BAUD_RATE 115200
+#define BAUD_RATE 115200    
 
 
 void setup() {
