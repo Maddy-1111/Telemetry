@@ -45,7 +45,7 @@ void setup() {
         while (1);
     }
 
-    LoRa.setSpreadingFactor(7);
+    LoRa.setSpreadingFactor(10);
     LoRa.setSignalBandwidth(125E3);
     LoRa.setCodingRate4(6);
 
@@ -78,10 +78,12 @@ void loop() {
             expectedIndex++;
         }
     }
-// TODO: remove this rssi check part #################
-	receivedData = dataBuffer;
-    receivedData[1] = (float)LoRa.packetRssi();
-    receivedData[2] = LoRa.packetSnr();
+    // This format (including rssi) should be agreed upon with arnav / strat
+    receivedData.clear();
+    receivedData.push_back((float)LoRa.packetRssi());
+    receivedData.push_back(LoRa.packetSnr());
+    receivedData.insert(receivedData.end(), dataBuffer.begin(), dataBuffer.end());
+    
 //////////////////////////////////////////////////////////////////////////
 // Serial.printf("First 3: %.10f, %.10f, %.10f ... Last 2: %.2f, %.2f\n", 
 // 	receivedData[0], receivedData[1], receivedData[2], 

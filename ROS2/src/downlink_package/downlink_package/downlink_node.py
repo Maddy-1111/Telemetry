@@ -11,6 +11,7 @@ PORT = "/dev/ttyUSB0"  # Change as needed
 BAUD_RATE = 115200
 TIMEOUT = 1  # Adjust timeout as required
 DATA_SIZE = 600 # Not critical currently (since were taking the whole array at once)
+##### this data size contains rssi and snr so is 2 length longer #####
 CHUNK_SIZE = 60
 
 

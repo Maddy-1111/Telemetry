@@ -30,9 +30,9 @@ Serial.println("LoRa initialization failed!");
         while (1);
     }
 
-    LoRa.setSpreadingFactor(7);  // SF (default)
-    LoRa.setSignalBandwidth(125E3);  // BW (default)
-    LoRa.setCodingRate4(6);  // CR (default)
+    LoRa.setSpreadingFactor(12);  // SF (default)
+    LoRa.setSignalBandwidth(251E3);  // BW (default)
+    LoRa.setCodingRate4(8);  // CR (default)
 
 Serial.println("LoRa Transmitter Ready");
 }

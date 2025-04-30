@@ -6,7 +6,7 @@ import datetime
 
 class DataLoggerNode(Node):
     def __init__(self):
-        super().__init__("data_logger_node")
+        super().__init__("lora_logger_node")
         self.subscription = self.create_subscription(
             Float32MultiArray,
             "serial_data",
@@ -14,7 +14,7 @@ class DataLoggerNode(Node):
             10
         )
         self.subscription  # Prevent unused variable warning
-        self.file_path = "/home/madhav/Desktop/Agnirath/Telemetry/log.csv"
+        self.file_path = "/home/madhav/Desktop/Agnirath/Telemetry/log3.csv"
         self.file = open(self.file_path, "a", newline="")
         self.writer = csv.writer(self.file)
         self.writer.writerow(["Timestamp", "Data"])

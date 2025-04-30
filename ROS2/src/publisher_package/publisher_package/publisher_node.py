@@ -3,7 +3,7 @@ from rclpy.node import Node
 from std_msgs.msg import Float32MultiArray as rosarray
 import random
 
-DATA_SIZE = 87 # Critical
+DATA_SIZE = 79 # Critical
 
 class ExamplePublisher(Node):
     def __init__(self, array_length=600):

@@ -30,9 +30,9 @@ void setup() {
         while (1);
     }
 
-    LoRa.setSpreadingFactor(7);  // SF (default)
-    LoRa.setSignalBandwidth(125E3);  // BW (default)
-    LoRa.setCodingRate4(6);  // CR (default)
+    LoRa.setSpreadingFactor(11);  // SF (default)
+    LoRa.setSignalBandwidth(30E3);  // BW (default)
+    LoRa.setCodingRate4(7);  // CR (default)
 
     Serial.println("LoRa Receiver Ready");
 }
