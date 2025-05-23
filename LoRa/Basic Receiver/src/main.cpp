@@ -1,52 +1,35 @@
 #include <Arduino.h>
-#include <SPI.h>
-#include <LoRa.h>
+#include <HardwareSerial.h>
+#include "config.h"
+#include "utils.h"
 
-// Define LoRa module pins for ESP32
-#define LORA_RST  27
-#define LORA_DIO0 2
-#define LORA_SS 15
 
-// Define SPI channel for ESP32
-#define HSPI_CS LORA_SS
-#define HSPI_CLK  14
-#define HSPI_MISO 12
-#define HSPI_MOSI 13
-
-#define LORA_FREQ 508E6
-#define BAUD_RATE 115200    
-
+HardwareSerial E32Serial(2);
 
 void setup() {
-    Serial.begin(115200);
-    while (!Serial);
+  Serial.begin(USB_BAUD);
+  E32Serial.begin(UART_BAUD, SERIAL_8N1, RX_PIN, TX_PIN);
 
-    Serial.println("Initializing LoRa Receiver...");
-    SPI.begin(HSPI_CLK, HSPI_MISO, HSPI_MOSI, HSPI_CS);
-    LoRa.setPins(LORA_SS, LORA_RST, LORA_DIO0);
+  pinMode(PIN_M0, OUTPUT);
+  pinMode(PIN_M1, OUTPUT);
 
-    if (!LoRa.begin(LORA_FREQ)) {
-        Serial.println("LoRa initialization failed!");
-        while (1);
-    }
+  Serial.println("Entering config mode... :)");
+  enterSleepMode();
 
-    LoRa.setSpreadingFactor(9);  // SF (default)
-    LoRa.setSignalBandwidth(100E3);  // BW (default)
-    LoRa.setCodingRate4(6);  // CR (default)
+//   apply915TransparentConfig();
 
-    Serial.println("LoRa Receiver Ready");
+  Serial.println("Reading config...");
+  readAndPrintConfig();
+
+  Serial.println("Returning to normal mode...");
+  enterNormalMode();
 }
 
+
 void loop() {
-    int packetSize = LoRa.parsePacket();
-    if (packetSize) {
-        Serial.print("Received: ");
-        while (LoRa.available()) {
-            Serial.print((char)LoRa.read());
-        }
-        Serial.print(" | RSSI: ");
-        Serial.print(LoRa.packetRssi());  // Signal strength
-        Serial.print(" dBm, SNR: ");
-        Serial.println(LoRa.packetSnr()); // Signal-to-noise ratio
-    }
+  if (E32Serial.available()) {
+    String received = E32Serial.readStringUntil('\n');
+    Serial.print("Received: ");
+    Serial.println(received);
+  }
 }
