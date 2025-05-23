@@ -13,7 +13,7 @@
 #define HSPI_MISO 12
 #define HSPI_MOSI 13
 
-#define LORA_FREQ 433E6
+#define LORA_FREQ 508E6
 #define BAUD_RATE 115200    
 
 
@@ -30,8 +30,8 @@ void setup() {
         while (1);
     }
 
-    LoRa.setSpreadingFactor(7);  // SF (default)
-    LoRa.setSignalBandwidth(125E3);  // BW (default)
+    LoRa.setSpreadingFactor(9);  // SF (default)
+    LoRa.setSignalBandwidth(100E3);  // BW (default)
     LoRa.setCodingRate4(6);  // CR (default)
 
     Serial.println("LoRa Receiver Ready");

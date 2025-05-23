@@ -13,7 +13,7 @@
 #define HSPI_MISO 12
 #define HSPI_MOSI 13
 
-#define LORA_FREQ 433E6
+#define LORA_FREQ 508E6
 #define BAUD_RATE 115200
 
 
@@ -30,8 +30,8 @@ Serial.println("LoRa initialization failed!");
         while (1);
     }
 
-    LoRa.setSpreadingFactor(7);  // SF (default)
-    LoRa.setSignalBandwidth(125E3);  // BW (default)
+    LoRa.setSpreadingFactor(9);  // SF (default)
+    LoRa.setSignalBandwidth(100E3);  // BW (default)
     LoRa.setCodingRate4(6);  // CR (default)
 
 Serial.println("LoRa Transmitter Ready");
@@ -43,10 +43,9 @@ void loop() {
 Serial.println("Sending: " + String(i));
 
         LoRa.beginPacket();
-        LoRa.print("Value: ");
+        LoRa.print("Index");
         LoRa.print(i);
-        LoRa.print(", Temp: ");
-        LoRa.print(25.6);
+        LoRa.print("------------------------------------------------------------------------------------------");
         LoRa.endPacket();  // Sends the entire packet
 
         delay(100);  // Small delay for stability

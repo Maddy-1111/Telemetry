@@ -4,56 +4,46 @@ from std_msgs.msg import Float32MultiArray as rosarray
 import serial
 import struct
 
-CYAN = "\033[36m"
-YELLOW = "\033[33m"
 GREEN = "\033[32m"
 RESET = "\033[0m"
 
-PORT = "/dev/ttyUSB1"
-TIMEOUT = 0.75
+SERIAL_PORT = "/dev/ttyUSB0"
 BAUD_RATE = 115200
-CHUNK_SIZE = 60
+TIMEOUT = 1
 
 
-class SERIAL_NODE(Node):
+class Telemetry_Node(Node):
 
-    def __init__(self,node):
-        super().    __init__(node)
-    
-    def init_final_data_subscriber(self, topic, serial_port,baud_rate):
-        self.final_data_subscriber = self.create_subscription(
-            rosarray, topic, self.send_final_data, 10
-        )
-        self.final_data_subscriber
-        self.final_sub_data = None
-        self.ser = serial.Serial(serial_port, baud_rate, timeout=TIMEOUT)  # worked till 0.6 (depends on LoRa rate)
+    def __init__(self):
+        super().__init__("telemetry_node")
+        self.subscription = self.create_subscription(
+            rosarray,
+            "final_data",
+            self.transmit_data,
+            10)
+        self.ser = serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=TIMEOUT)
 
 
-    def send_final_data(self, msg): 
-        self.final_sub_data = msg.data  # msg.data is of type `array.array`
-        total_floats = len(self.final_sub_data)
+    def transmit_data(self, msg): 
+        self.data = msg.data[8:]
+        total_floats = len(self.data)
         
-        for i in range(0, total_floats, CHUNK_SIZE):
-            chunk = self.final_sub_data[i:i + CHUNK_SIZE]
-            # byte_data = b''.join(struct.pack('<f', value) for value in chunk)  # Little-endian
-            length_byte = len(chunk).to_bytes(1, 'little')
-            byte_data = chunk.tobytes()  # Convert float32 array to bytes
-            
-            self.ser.write(length_byte + byte_data)  # Send bytes over serial
+        # data_bytes = b''.join(struct.pack('<f', value) for value in self.data)  # Little-endian
+        length_byte = len(self.data).to_bytes(1, 'little')
+        data_bytes = self.data.tobytes()  # Convert float32 array to bytes
+        
+        self.ser.write(length_byte + data_bytes)  # Send bytes over serial
 
-            print(f"Sent chunk {i // CHUNK_SIZE}: {len(byte_data)} bytes")
+        print(f"Sent data : {len(data_bytes)} bytes")
 
-            response = self.ser.readline()
-            if response == b'':
-                print("no ack :(")
-                break
-            elif response == b'ack\r\n':  # Compare bytes properly
-                print("------")
-                continue
-            else:
-                print("xxxxxx")
-                print(response)
-                break
+        response = self.ser.readline()
+        if response == b'':
+            print("no ack :(")
+        elif response == b'ack\r\n':  # Compare bytes properly
+            print("------")
+        else:
+            print("xxxxxx")
+            print(response)
 
     ########## TODO: remove this after removing all other printf statements (adding a delay of 1s)
         response = self.ser.readline()
@@ -61,11 +51,10 @@ class SERIAL_NODE(Node):
         while(response != b''):
             decoded_response = response.decode().strip()
             print(f"{GREEN}Decoded response: {decoded_response}{RESET}")
-            # response = 0
             response = self.ser.readline()
-            # print(response)
             
     ###########
+
 
     
     #### TODO: this is returning a 16 bit? ckeck it ### 
@@ -90,13 +79,11 @@ class SERIAL_NODE(Node):
 def main(args=None):
     rclpy.init(args=args)
 
-    serial_node = SERIAL_NODE("serial_node")
-    serial_node.init_final_data_subscriber("final_data",PORT,BAUD_RATE)
+    telemetry_node = Telemetry_Node()
 
-    while rclpy.ok():
-        rclpy.spin_once(serial_node) 
+    rclpy.spin(telemetry_node)
 
-    serial_node.destroy_node()
+    telemetry_node.destroy_node()
     rclpy.shutdown()
 
 

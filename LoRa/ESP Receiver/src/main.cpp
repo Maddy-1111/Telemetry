@@ -21,85 +21,66 @@
 #define LORA_FREQ 433E6
 #define BAUD_RATE 115200
 
-#define CHUNK_SIZE 60
-#define DATA_SIZE 600
+#define DATA_SIZE 248
 
-std::vector<float> receivedData;
+std::vector<float> Data;
 
 int generateCRC(const std::vector<float>& data, int expected_crc);
-void fillArray(std::vector<float>& arr, size_t size);
-std::tuple<uint8_t, std::vector<float>> decodeLoRaPacket(int packetSize);
-void writeSerial(std::vector<float>& dataArray);
+void fillArray(std::vector<float>& arr, size_t size);                       //TODO: remove this function
+std::vector<float> decodeLoRaPacket(int packetSize);
+void writeSerial(float Rssi, float Snr, std::vector<float>& dataArray);
 
 
 void setup() {
     Serial.begin(BAUD_RATE);
     while (!Serial);
 
-    Serial.println("Initializing LoRa Receiver...");
+    // Serial.println("Initializing LoRa Receiver...");
     SPI.begin(HSPI_CLK, HSPI_MISO, HSPI_MOSI, HSPI_CS);
     LoRa.setPins(LORA_SS, LORA_RST, LORA_DIO0);
 
     if (!LoRa.begin(LORA_FREQ)) {
-        Serial.println("LoRa initialization failed!");
+        // Serial.println("LoRa initialization failed!");
         while (1);
     }
 
     LoRa.setSpreadingFactor(7);
     LoRa.setSignalBandwidth(125E3);
     LoRa.setCodingRate4(6);
+    
+    // Serial.println("LoRa Receiver Ready");
 
-    Serial.println("LoRa Receiver Ready");
-
-	fillArray(receivedData, DATA_SIZE);
+	fillArray(Data, DATA_SIZE);
 }
 
 void loop() {
-////////////////////////////////////////////////////////////////////////
-	std::vector<float> dataBuffer;
-	uint8_t expectedIndex = 0;
+    int packetSize = LoRa.parsePacket();
+    if(packetSize){
+        std::vector<float> packetData = decodeLoRaPacket(packetSize);
+// Serial.printf("%d \n", packetSize);
 
-	while (expectedIndex < std::floor(DATA_SIZE/CHUNK_SIZE)) {
-        int packetSize = LoRa.parsePacket();
-        if (packetSize > 0) {
-            // auto [index, packetData] = decodeLoRaPacket(packetSize);
-			std::tuple<uint8_t, std::vector<float>> result = decodeLoRaPacket(packetSize);
-			uint8_t index = std::get<0>(result);
-			std::vector<float> packetData = std::get<1>(result);
+        Data = packetData;
+        float packetRssi = (float)LoRa.packetRssi();
+        float packetSnr = LoRa.packetSnr();
 
-            if (index != expectedIndex) {
-// Serial.printf("Out-of-order packet received: %d (expected %d).\n", index, expectedIndex);
-                return;  // Restart loop() to start over
-            }
-
-            dataBuffer.insert(dataBuffer.end(), packetData.begin(), packetData.end());
-// Serial.printf("received packet: %d\n", index);
-
-            expectedIndex++;
-        }
-    }
-
-	receivedData = dataBuffer;
-    receivedData[1] = (float)LoRa.packetRssi();
-    receivedData[2] = LoRa.packetSnr();
-//////////////////////////////////////////////////////////////////////////
 // Serial.printf("First 3: %.10f, %.10f, %.10f ... Last 2: %.2f, %.2f\n", 
-// 	receivedData[0], receivedData[1], receivedData[2], 
-// 	receivedData[receivedData.size() - 2], receivedData[receivedData.size() - 1]);
+// Data[0], Data[1], Data[2], 
+// Data[Data.size() - 2], Data[Data.size() - 1]);
 
-    writeSerial(receivedData);
+        writeSerial(packetRssi, packetSnr, Data);
 
-
-    if (Serial.available() > 0) {
-        String input = Serial.readString();
-        input.trim();
-
-        if (input == "reset") {
-            Serial.println("Initiating Software Reset...");
-            delay(1000);  // Optional delay to see the message before reset
-            ESP.restart();
-        }
     }
+
+    // if (Serial.available() > 0) {
+    //     String input = Serial.readString();
+    //     input.trim();
+
+    //     if (input == "reset") {
+    //         Serial.println("Initiating Software Reset...");
+    //         delay(1000);  // Optional delay to see the message before reset
+    //         ESP.restart();
+    //     }
+    // }
     delay(50);
 }
 
@@ -133,11 +114,11 @@ void fillArray(std::vector<float>& arr, size_t size) {
 }
 
 
-std::tuple<uint8_t, std::vector<float>> decodeLoRaPacket(int packetSize) {
+std::vector<float> decodeLoRaPacket(int packetSize) {
 
 	if (packetSize <= sizeof(uint8_t) + sizeof(int)) {
         Serial.println("Error: Packet too small!");
-        return {255, {}};  // Return an invalid index
+        return {};
     }
 
     std::vector<uint8_t> receivedBytes(packetSize);
@@ -145,40 +126,27 @@ std::tuple<uint8_t, std::vector<float>> decodeLoRaPacket(int packetSize) {
         receivedBytes[i] = LoRa.read();
     }
 
-    uint8_t index;
-    std::memcpy(&index, receivedBytes.data(), sizeof(uint8_t));
     int receivedCRC;
     std::memcpy(&receivedCRC, receivedBytes.data() + (packetSize - sizeof(int)), sizeof(int));
-    size_t numFloats = (packetSize - sizeof(uint8_t) - sizeof(int)) / sizeof(float);
+    size_t numFloats = (packetSize - sizeof(int)) / sizeof(float);
     std::vector<float> packetData(numFloats);
     for (size_t i = 0; i < numFloats; i++) {
-        std::memcpy(&packetData[i], receivedBytes.data() + sizeof(uint8_t) + (i * sizeof(float)), sizeof(float));
+        std::memcpy(&packetData[i], receivedBytes.data() + (i * sizeof(float)), sizeof(float));
     }
 
-    return {index, packetData};
+    return packetData;
 }
 
 
-void writeSerial(std::vector<float>& dataArray) {
+void writeSerial(float Rssi, float Snr, std::vector<float>& dataArray) {
     int totalFloats = dataArray.size();
-    uint8_t buffer[sizeof(int) + totalFloats * sizeof(float)];
+    uint8_t buffer[sizeof(float) + sizeof(float) + totalFloats * sizeof(float)];
 
-    memcpy(buffer, &totalFloats, sizeof(int));
-    memcpy(buffer + sizeof(int), dataArray.data(), totalFloats * sizeof(float));
+    // memcpy(buffer, &totalFloats, sizeof(int));
+    memcpy(buffer, &Rssi, sizeof(float));
+    memcpy(buffer + sizeof(float), &Snr, sizeof(float));
+    memcpy(buffer + sizeof(float) + sizeof(float), dataArray.data(), totalFloats * sizeof(float));
 
-    Serial.write(buffer, sizeof(int) + totalFloats * sizeof(float));
-    
-
-//     for (int i = 0; i < totalFloats; i += CHUNK_SIZE) {
-//         int chunkSize = min(CHUNK_SIZE, totalFloats - i);
-//         uint8_t buffer[1 + chunkSize * sizeof(float)];  // 1 byte for chunk index + float data
-
-//         buffer[0] = static_cast<uint8_t>(i);
-//         memcpy(buffer + 1, &dataArray[i], chunkSize * sizeof(float));
-
-//         Serial.write(buffer,1 + chunkSize * sizeof(float)); // replace w sizeof(buffer) ?
-//         delay(250);
-
-// // Serial.printf("Sent chunk %d: %d bytes\n", i / CHUNK_SIZE, (int)sizeof(buffer));
-//     }
+    Serial.print("%%");
+    Serial.write(buffer, sizeof(float) + sizeof(float) + totalFloats * sizeof(float));
 }

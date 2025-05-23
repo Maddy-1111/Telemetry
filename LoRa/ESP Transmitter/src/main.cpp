@@ -18,17 +18,16 @@
 #define LORA_FREQ 433E6
 #define BAUD_RATE 115200
 
-#define CHUNK_SIZE 60
-#define HEADER_SIZE 4 			// TODO: for the crc (not in use rn)
-#define DATA_SIZE 600
+#define DATA_SIZE 248
 
-std::vector<float> receivedData;
 
-std::vector<std::vector<float>> chunkVector(const std::vector<float>& vec, int chunkSize);
+std::vector<float> Data;
+
 bool readSerial(std::vector<float>& dataArray);
 int generateCRC(const std::vector<float>& data);
-void sendLoRaPacket(const std::vector<float>& chunk, int crc, uint8_t index);
+void sendLoRaPacket(const std::vector<float>& chunk, int crc);
 void fillArray(std::vector<float>& arr, size_t size);
+
 
 
 void setup() {
@@ -50,60 +49,31 @@ void setup() {
 
 	Serial.println("LoRa Transmitter Ready");
 
-	fillArray(receivedData, DATA_SIZE);
+	fillArray(Data, DATA_SIZE);
 }
+
+
 
 void loop() {
 
-	if(readSerial(receivedData)) {
+	if(readSerial(Data)) {
 		Serial.printf("First 3: %.10f, %.10f, %.10f ... Last 2: %.2f, %.2f\n", 
-			receivedData[0], receivedData[1], receivedData[2], 
-			receivedData[receivedData.size() - 2], receivedData[receivedData.size() - 1]);
-	
+			Data[0], Data[1], Data[2], 
+			Data[Data.size() - 2], Data[Data.size() - 1]);
 
-		std::vector<float> dataCopy = receivedData;
-		auto chunks = chunkVector(dataCopy, CHUNK_SIZE);
-
-		for (uint8_t i = 0; i < chunks.size(); i++) {
-			auto chunk = chunks[i];
-			int crc = generateCRC(chunk);
-			sendLoRaPacket(chunk, crc, i);
+			int crc = generateCRC(Data);
+			sendLoRaPacket(Data, crc);
 // TODO: will probably fail without the prints in the sendLoRaPacket
 // can fix it by just waiting till it receives ack to send next packet or smthng
-			if(i == 0) {
-				if(chunk.size() > 2) {
-					Serial.printf("First 3: %.10f, %.10f, %.10f\n", 
-								chunk[0], chunk[1], chunk[2]);
-				}
-				else { Serial.printf("Size of 1st chunk < 3\n"); }
-			}
-			if(i == chunks.size()-1) {
-				if(chunk.size() > 2) {
-					Serial.printf("... Last 2: %.2f, %.2f\n", 
-								chunk[chunk.size() - 2], chunk[chunk.size() - 1]);
-				}
-				else { Serial.printf("Size of last chunk < 3\n"); }
-			}
-			
-			delay(50);		
+			Serial.println("Sent Lora Packet");
 		}
-	}
 //////// NOTE: delay at end of loop must be more than timeout on uplink ///////
-	delay(750);			// worked till 600ms (depends on LoRa settings)
+	// delay(750);			//TODO: worked till 600ms (depends on LoRa settings) ////////// was this line, replaced it with the below delay ////////////////////
+		delay(50);
 }
 
 
 
-// Helper function: Chunk a vector into sub-vectors of given size
-std::vector<std::vector<float>> chunkVector(const std::vector<float>& vec, int chunkSize) {
-	std::vector<std::vector<float>> chunks;
-	for (size_t i = 0; i < vec.size(); i += chunkSize) {
-		auto start = vec.begin() + i;
-		auto end = (i + chunkSize < vec.size()) ? start + chunkSize : vec.end();
-		chunks.push_back(std::vector<float>(start, end));
-	}
-	return chunks;
-}
 
 // TODO: make the crc take in a bytes array and generate a byte out of it (will be able to validate chunk index too)
 // Helper function: Calculate CRC from a vector of floats by processing each float's byte representation
@@ -129,31 +99,30 @@ int generateCRC(const std::vector<float>& data) {
 
 bool readSerial(std::vector<float>& dataArray) {
 	std::vector<float> dataBuffer;
-	bool new_data = false;
+	bool data_valid = false;
 	while (Serial.available()) {
 		uint8_t length;				// number of floats being received
 		Serial.readBytes(&length, 1);
 
-		if (length > 0 && length <= CHUNK_SIZE) {
-            float packet[length];
+		if (length > 0 && length <= DATA_SIZE) {
+            float packet[length];						//////////////////TODO: rewrite this with using dataBuffer directly or only using packet /////////////
             Serial.readBytes((char*)packet, length * sizeof(float));  // Read float bytes
 			
 			dataBuffer.insert(dataBuffer.end(), packet, packet + length);
-			new_data = true;
+			data_valid = true;
 			Serial.println("ack");
 			delay(50);		// TODO: KEEP THIS IN MIND, 20ms works for my laptop 
         }
         else {
 			Serial.println("invalid length!");
-			// Serial.printf("invalid, length = %d\n", length);
 			return false;	// invalid data length
 		}
 	}
 	
-	if (new_data) {
+	if (data_valid) {
 		dataArray = dataBuffer;
 	}
-    return new_data;  // No new data received
+    return data_valid;  // No new data received
 }
 
 
@@ -166,17 +135,16 @@ void fillArray(std::vector<float>& arr, size_t size) {
 
 
 // Sends the data as bytes, provided the vector chunk (float) and crc (int)
-void sendLoRaPacket(const std::vector<float>& chunk, int crc, uint8_t index) {
+void sendLoRaPacket(const std::vector<float>& chunk, int crc) {
     if (chunk.empty()) return; // Avoid sending empty packets
 
-    std::vector<uint8_t> packetData(chunk.size() * sizeof(float) + sizeof(int) + sizeof(uint8_t));
+    std::vector<uint8_t> packetData(chunk.size() * sizeof(float) + sizeof(int));
 
-	std::memcpy(packetData.data(), &index, sizeof(uint8_t));  // Copy index first
-	std::memcpy(packetData.data() + sizeof(uint8_t), chunk.data(), chunk.size() * sizeof(float));  // Copy chunk data
-	std::memcpy(packetData.data() + sizeof(uint8_t) + (chunk.size() * sizeof(float)), &crc, sizeof(int));  // Copy CRC at the end
+	std::memcpy(packetData.data(), chunk.data(), chunk.size() * sizeof(float));  // Copy chunk data
+	std::memcpy(packetData.data() + (chunk.size() * sizeof(float)), &crc, sizeof(int));  // Copy CRC at the end
 	
     LoRa.beginPacket();
     LoRa.write(packetData.data(), packetData.size());
-    Serial.printf("sent packet %d, size: %d \n", static_cast<int>(index), packetData.size());
+    Serial.printf("sent packet, size: %d \n", packetData.size());
     LoRa.endPacket();
 }
