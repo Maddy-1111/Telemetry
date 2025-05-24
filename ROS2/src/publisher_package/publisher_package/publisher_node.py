@@ -4,7 +4,7 @@ from std_msgs.msg import Float32MultiArray as rosarray
 import random
 
 class ExamplePublisher(Node):
-    def __init__(self, array_length=600):
+    def __init__(self, array_length):
         super().__init__('example_publisher')
         self.publisher = self.create_publisher(rosarray, 'final_data', 10)
         self.array_length = array_length
@@ -17,6 +17,7 @@ class ExamplePublisher(Node):
         
         # Set the first and last elements as counters
         data[0] = float(self.counter)
+        data[10] = float(self.counter) # This is for the output packet
         data[-1] = float(self.counter)
         
         # Increment the counter for the next array
@@ -30,11 +31,11 @@ class ExamplePublisher(Node):
         self.publisher.publish(msg)
         
         # Log the publishing action (only showing the first and last 5 values for readability)
-        self.get_logger().info(f'Publishing: {msg.data[:3]} ... {msg.data[-2:]}')
+        self.get_logger().info(f'Publishing ({self.array_length} floats): {msg.data[:3]} ... {msg.data[-2:]}')
 
 def main(args=None):
     rclpy.init(args=args)
-    example_publisher = ExamplePublisher(array_length=600)
+    example_publisher = ExamplePublisher(array_length=62)
     
     try:
         rclpy.spin(example_publisher)

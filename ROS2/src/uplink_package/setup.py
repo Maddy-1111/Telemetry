@@ -18,6 +18,8 @@ setup(
     description='TODO: Package description',
     license='Apache-2.0',
     tests_require=['pytest'],
+    package_data={'uplink_package': ['packet_structure.json']},
+    include_package_data=True,
     entry_points={
         'console_scripts': [
             'uplink_node = uplink_package.uplink_node:main'
