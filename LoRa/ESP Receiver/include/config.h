@@ -7,8 +7,12 @@
 #define UART_BAUD 9600
 #define RX_PIN 16
 #define TX_PIN 17
+#define TIMEOUT 1000                        // (ms) for UART
+#define MAX_DATA_LEN 400                 // in bytes
+#define TERMINATOR {0xDE, 0xAD, 0xBE, 0xEF}
 
-extern HardwareSerial E32Serial;
-
+const uint8_t terminator[4] = TERMINATOR;
 const int PIN_M0 = 4;
 const int PIN_M1 = 5;
+
+extern HardwareSerial E32Serial;

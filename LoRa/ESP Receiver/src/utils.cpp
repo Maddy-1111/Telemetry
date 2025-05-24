@@ -2,6 +2,20 @@
 #include "config.h"
 
 
+void flushSerial(HardwareSerial &serialPort) {
+    while (serialPort.available()) {
+        serialPort.read();
+    }
+}
+
+bool checkTerminator(const uint8_t *buf) {
+    for (size_t i = 0; i < sizeof(terminator); i++) {
+        if (buf[i] != terminator[i])
+            return false;
+    }
+    return true;
+}
+
 void enterSleepMode()
 {
     digitalWrite(PIN_M0, HIGH);

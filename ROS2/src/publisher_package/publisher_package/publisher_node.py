@@ -35,7 +35,7 @@ class ExamplePublisher(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-    example_publisher = ExamplePublisher(array_length=62)
+    example_publisher = ExamplePublisher(array_length=111)
     
     try:
         rclpy.spin(example_publisher)
