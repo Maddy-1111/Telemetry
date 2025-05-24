@@ -36,13 +36,14 @@ void loop() {
 
 	while (E32Serial.available() < 2) delay(1);
 	E32Serial.readBytes(data_len, 2);
-	uint16_t length = (data_len[0] << 8) | data_len[1];
-
+	uint16_t length = (data_len[1] << 8) | data_len[0];
+// Serial.println("Checkpoint A");
+// Serial.println(length);
 	if (length == 0 || length > 512) {
 		flushSerial(E32Serial);
 		return;
 	}
-
+// Serial.println("Checkpoint B");
 	while (E32Serial.available() < 2) delay(1);
 	E32Serial.readBytes(data_crc, 2);
 
@@ -61,7 +62,7 @@ void loop() {
 
 		Serial.write(data_len, 2);
 		Serial.write(data_crc, 2);
-    Serial.write(data_type, 1);
+    	Serial.write(data_type, 1);
 		Serial.write(data_buf, length);
 		Serial.write(data_term, sizeof(data_term));
 

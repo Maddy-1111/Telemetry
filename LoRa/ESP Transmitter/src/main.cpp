@@ -36,7 +36,7 @@ void loop() {
 
 	while (Serial.available() < 2) delay(1);
 	Serial.readBytes(data_len, 2);
-	uint16_t length = (data_len[0] << 8) | data_len[1];
+	uint16_t length = (data_len[1] << 8) | data_len[0];
 
 	if (length == 0 || length > MAX_DATA_LEN) {
 		flushSerial(Serial);
@@ -66,5 +66,22 @@ void loop() {
 		E32Serial.write(data_buf, length);
 		E32Serial.write(data_term, sizeof(data_term));
 
+// 		uint16_t total_len = 2 + 2 + 1 + length + sizeof(data_term);
+// 		uint8_t packet[total_len];
+
+// 		uint16_t pos = 0;
+// 		memcpy(packet + pos, data_len, 2);
+// 		pos += 2;
+// 		memcpy(packet + pos, data_crc, 2);
+// 		pos += 2;
+// 		memcpy(packet + pos, data_type, 1);
+// 		pos += 1;
+// 		memcpy(packet + pos, data_buf, length);
+// 		pos += length;
+// 		memcpy(packet + pos, data_term, sizeof(data_term));
+
+// 		E32Serial.write(packet, total_len);
+Serial.write("LoRa data Sent!!!\n");
 	}
+	delay(3000);
 }

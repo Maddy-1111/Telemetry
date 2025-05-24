@@ -10,7 +10,7 @@ TIMEOUT = 1
 TERMINATOR = b'\xDE\xAD\xBE\xEF'  ## same terminator as sender ##
 
 
-def generate_crc(self, byte_stream: bytes, poly=0x1021, init_val=0x0000):
+def generate_crc(byte_stream: bytes, poly=0x1021, init_val=0x0000):
     """Generate CRC-16-CCITT (XModem) [2 bytes] for the byte_stream"""
     crc = init_val
     for byte in byte_stream:
@@ -22,6 +22,11 @@ def generate_crc(self, byte_stream: bytes, poly=0x1021, init_val=0x0000):
                 crc <<= 1
             crc &= 0xFFFF  # Keep it 16-bit
     return crc.to_bytes(2, byteorder='little')
+
+
+def flush_serial(ser):
+    while ser.in_waiting > 0:
+        ser.read(ser.in_waiting)
 
 
 def read_packet(ser: serial.Serial):
@@ -46,11 +51,13 @@ def read_packet(ser: serial.Serial):
     term_bytes = ser.read(len(TERMINATOR))
     if term_bytes != TERMINATOR:
         print("Terminator mismatch, dropping packet")
+        flush_serial(ser)
         return None
 
     calc_crc = generate_crc(type_byte + data_bytes)
     if calc_crc != crc_bytes:
         print("CRC check failed, dropping packet")
+        flush_serial(ser)
         return None
 
     return {
@@ -102,9 +109,12 @@ def reverse_bytestream(data_bytes: bytes, output_order: list[str], fields: dict,
 
 
 def log_data(data_buf, filename="output_data.jsonl"):
+    # Convert numpy scalars to Python native types ####################### temp fix #####TODO: fix this
+    clean_data = {k: (v.item() if hasattr(v, 'item') else v) for k, v in data_buf.items()}
     with open(filename, "a") as f:
-        json_line = json.dumps(data_buf)
+        json_line = json.dumps(clean_data)
         f.write(json_line + "\n")
+
 
 
 def main():
@@ -142,6 +152,7 @@ def main():
 
         data_buf = reverse_bytestream(packet['data'], output_order, fields, flags, type_map)
         log_data(data_buf)
+        print("logged data!!")
 
 
 if __name__ == "__main__":

@@ -102,6 +102,20 @@ class Telemetry_Node(Node):
         self.ser.write(self.packet)
         print(f"Packet sent: length = {len(self.packet)}, 'length'={len(self.data_out)}")
 
+        ########## TODO: remove this after removing all other printf statements (adding a delay of 1s)
+
+        response = self.ser.readline()
+
+        while response != b'':
+            try:
+                decoded_response = response.decode().strip()
+                print(f"Decoded response: {decoded_response}")
+            except UnicodeDecodeError:
+                print("Warning: Received non-UTF-8 data, skipping line.")
+            response = self.ser.readline()
+                
+        ###########
+
     def generate_bytestream(self, output_order):
         byte_stream = bytearray()
 
