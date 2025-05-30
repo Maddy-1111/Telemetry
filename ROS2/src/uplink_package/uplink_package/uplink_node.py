@@ -10,7 +10,7 @@ import numpy as np
 SERIAL_PORT = "/dev/ttyUSB0"
 BAUD_RATE = 115200
 TIMEOUT = 1
-TERMINATOR = b'\xDE\xAD\xBE\xEF'        ## DEADBEEF ##
+HEADER = b'\xDE\xAD\xBE\xEF'        ## DEADBEEF ##
 
 
 class Telemetry_Node(Node):
@@ -31,6 +31,7 @@ class Telemetry_Node(Node):
             self.transmit_data,
             1)
         self.ser = serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=TIMEOUT)
+        self.ser.reset_input_buffer()
         self.msg_count = 0
         self.load_structure()
 
@@ -98,7 +99,7 @@ class Telemetry_Node(Node):
 
         self.crc = self.generate_crc(self.type + self.data_out)
         self.length = len(self.data_out).to_bytes(2, 'little')
-        self.packet = self.length + self.crc + self.type + self.data_out + TERMINATOR
+        self.packet = HEADER + self.length + self.crc + self.type + self.data_out
         self.ser.write(self.packet)
         print(f"Packet sent: length = {len(self.packet)}, 'length'={len(self.data_out)}")
 

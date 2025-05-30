@@ -8,9 +8,9 @@ void flushSerial(HardwareSerial &serialPort) {
     }
 }
 
-bool checkTerminator(const uint8_t *buf) {
-    for (size_t i = 0; i < sizeof(terminator); i++) {
-        if (buf[i] != terminator[i])
+bool checkHeader(const uint8_t *buf) {
+    for (size_t i = 0; i < sizeof(header); i++) {
+        if (buf[i] != header[i])
             return false;
     }
     return true;

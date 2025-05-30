@@ -24,47 +24,45 @@ void setup() {
 
 	Serial.println("Returning to normal mode...");
 	enterNormalMode();
-	}
+}
 
 
 void loop() {
+	uint8_t data_head[sizeof(header)] = {0};
 	uint8_t data_len[2] = {0};
 	uint8_t data_crc[2] = {0};
-  uint8_t data_type[1] = {0};
+  	uint8_t data_type[1] = {0};
 	uint8_t data_buf[MAX_DATA_LEN] = {0};
-	uint8_t data_term[sizeof(terminator)] = {0};
+
+	while (E32Serial.available() < sizeof(header)) delay(2);
+	E32Serial.readBytes(data_head, sizeof(header));
+	if (!checkHeader(data_head)) {
+		flushSerial(Serial);
+		return;
+	}
 
 	while (E32Serial.available() < 2) delay(1);
 	E32Serial.readBytes(data_len, 2);
 	uint16_t length = (data_len[1] << 8) | data_len[0];
-// Serial.println("Checkpoint A");
-// Serial.println(length);
 	if (length == 0 || length > 512) {
 		flushSerial(E32Serial);
 		return;
 	}
-// Serial.println("Checkpoint B");
+
 	while (E32Serial.available() < 2) delay(1);
 	E32Serial.readBytes(data_crc, 2);
 
-  while (E32Serial.available() < 1) delay(1);
+  	while (E32Serial.available() < 1) delay(1);
 	E32Serial.readBytes(data_type, 1);
 
 	while (E32Serial.available() < length) delay(1);
 	E32Serial.readBytes(data_buf, length);
 
-	while (E32Serial.available() < sizeof(terminator)) delay(1);
-	E32Serial.readBytes(data_term, sizeof(terminator));
+	
+	Serial.write(data_head, sizeof(header));
+	Serial.write(data_len, 2);
+	Serial.write(data_crc, 2);
+	Serial.write(data_type, 1);
+	Serial.write(data_buf, length);
 
-	if (checkTerminator(data_term)) {
-		flushSerial(E32Serial);
-/////////// Sending packet via USB ////////////
-
-		Serial.write(data_len, 2);
-		Serial.write(data_crc, 2);
-    	Serial.write(data_type, 1);
-		Serial.write(data_buf, length);
-		Serial.write(data_term, sizeof(data_term));
-
-	}
 }
